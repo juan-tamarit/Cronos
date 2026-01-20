@@ -1,47 +1,65 @@
 import 'package:flutter/material.dart';
 import '../models/activity.dart';
 import 'activity_screen.dart';
+import '../db/activity_dao.dart';
+import 'activities_list_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen ({super.key});
+  @override
+  State<HomeScreen> createState()=> _HomeScreenState();
+}
+class _HomeScreenState extends State<HomeScreen>{
+  List<Activity> _todayActivities=[];
+  bool _loading=true;
+  
+  Future <void> _loadTodayActivities() async{
+    final allActiveActivities= await ActivityDao().getActive();
+    final today= DateTime.now().weekday-1;
 
+    final filtered=allActiveActivities.where((a){return a.daysWeek.contains(today);}).toList();
+    setState(() {
+      _todayActivities=filtered;
+      _loading=false;
+    });
+  }
+  @override
+  void initState() {
+    super.initState();
+    _loadTodayActivities();
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Cronómetros'),),
-      body: ListView.builder(
-        itemCount: fakeActivities.length,
-        itemBuilder: (context, index){
-          final activity=fakeActivities[index];
-          return ListTile(
-            title: Text(activity.name),
-            subtitle: Text('Objetivo: ${activity.objetiveMinutes} min'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: (){
-              Navigator.push(context, MaterialPageRoute(builder: (_)=>ActivityScreen(activity:activity),),);
-            },
-          );
-        },
+      appBar: AppBar(
+        title: const Text ('Hoy'),
+        actions: [
+          IconButton(
+            onPressed: ()async{
+              await Navigator.push(context, MaterialPageRoute(builder: (_)=> const ActivitiesListScreen()));
+              _loadTodayActivities();
+            }, 
+            icon: Icon(Icons.list)
+          )
+        ],
       ),
+      body: _loading
+      ? const Center(child:CircularProgressIndicator())
+      :_todayActivities.isEmpty
+        ? const Center(child: Text('No hay actividades para hoy'))
+        : ListView.builder(
+            itemCount: _todayActivities.length,
+            itemBuilder: (_,i){
+              final a= _todayActivities[i];
+              return ListTile(
+                title: Text(a.name),
+                subtitle: Text('${a.objetiveMinutes} min'),
+                onTap: (){
+                  Navigator.push(context, MaterialPageRoute(builder: (_)=>ActivityScreen(activity: a)));
+                }
+              );
+            }
+            )
     );
   }
 }
-
-
-//Aún no tenemos datos guardados, creamos la lista para poder ver la representación
-final List<Activity> fakeActivities =[
-  Activity(
-    id:1,
-    name:'Leer',
-    description: 'Tiempo dedicado a leer libros',
-    objetiveMinutes: 30,
-    daysWeek: [1,2,3,4,5,6,7]
-  ),
-  Activity(
-    id:2,
-    name:'Deporte',
-    description:'Tiempo dedicado a correr o ir al gimnasio',
-    objetiveMinutes:60,
-    daysWeek:[1,2,3,4,5,7]
-  )
-];

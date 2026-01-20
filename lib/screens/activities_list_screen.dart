@@ -53,10 +53,8 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen>{
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children:[
-                IconButton(onPressed: (){ setState(() {
-                  
-                });} , icon: Icon(a.active?Icons.check_circle:Icons.pause_circle)),
-                IconButton(onPressed:(){_dao.delete(a.id!);}, icon: Icons.cance)
+                IconButton(onPressed:()=> _toggleActive(a) , icon: Icon(a.active?Icons.check_circle:Icons.pause_circle),color: a.active?Colors.green:Colors.red,),
+                IconButton(onPressed:()=> _deleteActivity(a), icon: Icon(Icons.delete, color: Colors.red))
               ]
             ),
             onTap: () {
@@ -83,4 +81,29 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen>{
     await _dao.update(updated);
     _loadActivites();
   }
+
+  Future<void> _deleteActivity(Activity a) async {
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('Eliminar actividad'),
+      content: Text('¿Seguro que quieres eliminar "${a.name}"?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancelar'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Eliminar'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirm == true) {
+    await _dao.delete(a.id!);
+    _loadActivites();
+  }
+}
 }
