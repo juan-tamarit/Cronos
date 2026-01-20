@@ -30,8 +30,10 @@ class Activity {
       id:map['id'],
       name: map['name'],
       description: map['description']??'',
-      objetiveMinutes: map['objectiveMinutes'],
-      daysWeek: (map['daysWeek'] as String).split(',').map((e) =>int.parse(e)).toList(),
+      objetiveMinutes: map['objetiveMinutes'],
+      daysWeek: (map['daysWeek'] as String).isEmpty
+        ? <int>[]
+        :(map['daysWeek'] as String).split(',').map((e) =>int.parse(e)).toList(),
       active: map['active']==1
     );
   }
