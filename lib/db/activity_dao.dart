@@ -21,7 +21,19 @@ class ActivityDao {
 
     return maps.map((m) => Activity.fromMap(m)).toList();
   }
+  /// Obtener todas las actividades por su id
+  Future <Activity?> getById(int id) async{
+    final db = await DatabaseHelper.instance.database;
 
+    final maps= await db.query(
+      'activities',
+      where:'id=?',
+      whereArgs:[id]);
+    if(maps.isNotEmpty){
+      return Activity.fromMap(maps.first);
+    }
+    return null;
+  }
   /// Obtener solo actividades activas
   Future<List<Activity>> getActive() async {
     final db = await DatabaseHelper.instance.database;
@@ -60,7 +72,7 @@ class ActivityDao {
     );
   }
 
-  /// Borrado físico (opcional)
+  /// Borrado físico
   Future<int> delete(int id) async {
     final db = await DatabaseHelper.instance.database;
 
