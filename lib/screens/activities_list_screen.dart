@@ -50,8 +50,14 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen>{
           return ListTile(
             title: Text (a.name),
             subtitle: Text ('${a.objetiveMinutes} min'),
-            trailing: Icon(
-              a.active ? Icons.check_circle:Icons.pause_circle
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children:[
+                IconButton(onPressed: (){ setState(() {
+                  
+                });} , icon: Icon(a.active?Icons.check_circle:Icons.pause_circle)),
+                IconButton(onPressed:(){_dao.delete(a.id!);}, icon: Icons.cance)
+              ]
             ),
             onTap: () {
               Navigator.push(
@@ -70,5 +76,11 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen>{
         },
       )
     );
+  }
+
+  Future <void> _toggleActive(Activity a) async{
+    final updated= a.copyWith(active: !a.active);
+    await _dao.update(updated);
+    _loadActivites();
   }
 }
