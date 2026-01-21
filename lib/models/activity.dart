@@ -30,9 +30,21 @@ class Activity {
       id:map['id'],
       name: map['name'],
       description: map['description']??'',
-      objetiveMinutes: map['objectiveMinutes'],
-      daysWeek: (map['daysWeek'] as String).split(',').map((e) =>int.parse(e)).toList(),
+      objetiveMinutes: map['objetiveMinutes'],
+      daysWeek: (map['daysWeek'] as String).isEmpty
+        ? <int>[]
+        :(map['daysWeek'] as String).split(',').map((e) =>int.parse(e)).toList(),
       active: map['active']==1
+    );
+  }
+  Activity copyWith({String? name,String? description,int? objetiveMinutes,List<int>? daysWeek,bool? active}) {
+    return Activity(
+      id: id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      objetiveMinutes: objetiveMinutes ?? this.objetiveMinutes,
+      daysWeek: daysWeek ?? List.from(this.daysWeek),
+      active: active ?? this.active
     );
   }
 }
