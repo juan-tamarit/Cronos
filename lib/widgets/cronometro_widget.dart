@@ -7,7 +7,7 @@ class CronometroWidget extends StatefulWidget{
   final int objetiveMinutes;
   final int activityId;
 
-  CronometroWidget({
+  const CronometroWidget({
     super.key,
     required this.objetiveMinutes,
     required this.activityId
