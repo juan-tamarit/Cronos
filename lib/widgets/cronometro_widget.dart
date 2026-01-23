@@ -86,6 +86,15 @@ class _CronometroWidgetState extends State<CronometroWidget>{
 
   @override
    void dispose(){
+    if(_running && _sessionStart!=null && _seconds >0){
+      final session=Session(
+        activityId: widget.activityId,
+        start: _sessionStart!,
+        end:DateTime.now(),
+        durationSecs: _seconds
+      );
+      SessionDao().insert(session);
+    }
     _timer?.cancel();
     super.dispose();
    }
