@@ -38,13 +38,16 @@ class _CronometroWidgetState extends State<CronometroWidget>{
       .where((s) =>
         s.start.year == today.year &&
         s.start.month == today.month &&
-        s.start.day == today.day)
-      .fold<int>(0, (sum, s) => sum + s.durationSecs);
-  
+        s.start.day == today.day).toList();
+
+      final maxSeconds = todaySeconds.isNotEmpty
+      ? todaySeconds.map((s) => s.durationSecs).reduce((a, b) => a > b ? a : b)
+      : 0;
+
     setState(() {
-      _seconds = todaySeconds;
+      _seconds = maxSeconds;
     });
-}
+  }
 
   void _start(){
     _sessionStart??=DateTime.now();
@@ -131,7 +134,57 @@ class _CronometroWidgetState extends State<CronometroWidget>{
             ),
           ],
         ),
+        SizedBox(height: 10),
+        ElevatedButton(onPressed: ()=>showAddTimeDialog(context), child: const Text ("Añadir tiempo"))
       ],
     );
    }
+   
+  Future<void> showAddTimeDialog(BuildContext context) async{
+    final controller= TextEditingController();
+    final result= await showDialog<int>(
+      context: context,
+      builder: (context)=> AlertDialog(
+        title: const Text("Añadir tiempo"),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Minutos'
+          )
+        ),
+        actions: [
+          TextButton(onPressed: ()=> Navigator.pop(context), child: const Text ("Cancelar")),
+          ElevatedButton(onPressed: (){
+            final minutes = int.tryParse(controller.text);
+            if (minutes!=null && minutes>0){
+              Navigator.pop(context,minutes);
+            }
+          },
+          child: const Text("Añadir")
+          )
+        ],
+      )
+    );
+    if (result!=null){
+      await addManualSession(result);
+    }
+  }
+
+  Future<void> addManualSession(int minutes) async {
+    final now = DateTime.now();
+
+    final session = Session(
+      activityId: widget.activityId,
+      start: now,
+      end: now,
+      durationSecs: minutes * 60,
+    );
+
+    await SessionDao().insert(session);
+
+    setState(() {
+      _seconds+=minutes*60;
+    }); // refresca totales
+  } 
 }
