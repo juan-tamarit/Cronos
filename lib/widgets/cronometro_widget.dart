@@ -30,20 +30,7 @@ class _CronometroWidgetState extends State<CronometroWidget>{
   }
 
   Future<void> _loadAccumulatedTime() async {
-    final allSessions = await SessionDao().getByActivity(widget.activityId);
-    final today = DateTime.now();
-  
-   // Filtramos solo las sesiones de hoy
-    final todaySeconds = allSessions
-      .where((s) =>
-        s.start.year == today.year &&
-        s.start.month == today.month &&
-        s.start.day == today.day).toList();
-
-      final maxSeconds = todaySeconds.isNotEmpty
-      ? todaySeconds.map((s) => s.durationSecs).reduce((a, b) => a > b ? a : b)
-      : 0;
-
+    final maxSeconds=await getAcumulatedSeconds();
     setState(() {
       _seconds = maxSeconds;
     });
@@ -71,8 +58,21 @@ class _CronometroWidgetState extends State<CronometroWidget>{
     await SessionDao().insert(session);
   }
 
-  void _reset(){
+  void _reset() async{
     _timer?.cancel();
+    final maxSeconds= await getAcumulatedSeconds();
+    final now = DateTime.now();
+  
+    if (maxSeconds==0) return;
+    final correctionSession=Session(
+      activityId: widget.activityId,
+      start: now,
+      end: now,
+      durationSecs: -maxSeconds
+    );
+    
+    await SessionDao().insert(correctionSession);
+
     setState(() {
       _seconds=0;
       _running=false;
@@ -187,4 +187,25 @@ class _CronometroWidgetState extends State<CronometroWidget>{
       _seconds+=minutes*60;
     }); // refresca totales
   } 
+
+  Future<int> getAcumulatedSeconds() async{
+    final allSessions = await SessionDao().getByActivity(widget.activityId);
+    final today = DateTime.now();
+  
+   // Filtramos solo las sesiones de hoy
+    final todaySeconds = allSessions
+      .where((s) =>
+        s.start.year == today.year &&
+        s.start.month == today.month &&
+        s.start.day == today.day).toList();
+
+    final maxSeconds = todaySeconds.isNotEmpty
+    ? todaySeconds.map((s) => s.durationSecs).reduce((a, b) => a > b ? a : b)
+    : 0;
+    // sesiones negativas (correcciones / reset)
+    final corrections = todaySeconds
+      .where((s) => s.durationSecs < 0)
+      .fold<int>(0, (sum, s) => sum + s.durationSecs);
+    return maxSeconds+corrections;
+  }
 }
