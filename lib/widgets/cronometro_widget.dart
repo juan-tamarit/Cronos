@@ -31,12 +31,38 @@ class _CronometroWidgetState extends State<CronometroWidget>{
   }
 
   Future<void> _loadAccumulatedTime() async {
-    final total = await SessionDao().getAccumulatedSecondsForActivity(widget.activityId);
+    final dao = SessionDao();
+    final lastSession = await dao.getLastSession(widget.activityId);
 
-    setState(() {
-      _baseSeconds = total;
-      _sessionSeconds = 0;
-    });
+    if (lastSession == null) {
+      setState(() {
+        _baseSeconds = 0;
+        _sessionSeconds = 0;
+      });
+      return;
+    }
+
+    final now = DateTime.now();
+    final lastDay = DateTime(
+      lastSession.end.year,
+      lastSession.end.month,
+      lastSession.end.day,
+    );
+    final today = DateTime(now.year, now.month, now.day);
+
+    if (lastDay != today) {
+      // Día nuevo → empezamos de cero
+      setState(() {
+        _baseSeconds = 0;
+        _sessionSeconds = 0;
+      });
+    } else {
+    // Mismo día → usamos acumulado persistido
+      setState(() {
+        _baseSeconds = lastSession.accumulatedSecs;
+        _sessionSeconds = 0;
+      });
+    }
   }
 
   void _start(){

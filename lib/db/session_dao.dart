@@ -41,4 +41,18 @@ class SessionDao {
 
     return result.first['accumulatedSecs'] as int;
   }
+    Future<Session?> getLastSession(int activityId) async {
+    final db = await DatabaseHelper.instance.database;
+
+    final maps = await db.query(
+      'sessions',
+      where: 'activityId = ?',
+      whereArgs: [activityId],
+      orderBy: 'end DESC',
+      limit: 1,
+    );
+
+    if (maps.isEmpty) return null;
+    return Session.fromMap(maps.first);
+  }
 }
