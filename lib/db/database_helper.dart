@@ -39,6 +39,7 @@ class DatabaseHelper {
       start TEXT NOT NULL,
       end TEXT NOT NULL,
       durationSecs INTEGER NOT NULL,
+      accumulatedSecs INTEGER NOT NULL,
       FOREIGN KEY(activityId) REFERENCES activities (id)
       )
     ''');
