@@ -20,9 +20,10 @@ class CronometroWidget extends StatefulWidget{
 class _CronometroWidgetState extends State<CronometroWidget>{
   DateTime? _sessionStart;
   Timer? _timer;
-  int _seconds=0;
+  int _baseSeconds = 0;
+  int _sessionSeconds = 0;
   bool _running=false;
-
+  int get _seconds=>_baseSeconds + _sessionSeconds;
   @override
   void initState() {
     super.initState();
@@ -30,9 +31,11 @@ class _CronometroWidgetState extends State<CronometroWidget>{
   }
 
   Future<void> _loadAccumulatedTime() async {
-    final maxSeconds=await getAcumulatedSeconds();
+    final total = await SessionDao().getAccumulatedSecondsForActivity(widget.activityId);
+
     setState(() {
-      _seconds = maxSeconds;
+      _baseSeconds = total;
+      _sessionSeconds = 0;
     });
   }
 
@@ -40,7 +43,7 @@ class _CronometroWidgetState extends State<CronometroWidget>{
     _sessionStart??=DateTime.now();
     if (_running) return;
     _timer= Timer.periodic(const Duration(seconds:1),(timer){
-      setState(() {_seconds++;});
+      setState(() {_sessionSeconds++;});
     });
     setState(() {_running=true;});
   }
@@ -48,35 +51,40 @@ class _CronometroWidgetState extends State<CronometroWidget>{
   void _pause() async{
     if (!_running|| _sessionStart==null||_seconds==0) return;
     _timer?.cancel();
+    final accumulated = _baseSeconds + _sessionSeconds;
     setState(() {_running=false;});
     final session=Session(
       activityId:widget.activityId, 
       start:_sessionStart!, 
       end: DateTime.now(), 
-      durationSecs: _seconds
+      durationSecs: _sessionSeconds,
+      accumulatedSecs: accumulated
     );
     await SessionDao().insert(session);
   }
 
   void _reset() async{
     _timer?.cancel();
-    final maxSeconds= await getAcumulatedSeconds();
+
+    if (_baseSeconds == 0) return;
+
     final now = DateTime.now();
-  
-    if (maxSeconds==0) return;
-    final correctionSession=Session(
+
+    final resetSession = Session(
       activityId: widget.activityId,
       start: now,
       end: now,
-      durationSecs: -maxSeconds
+      durationSecs: -_baseSeconds,
+      accumulatedSecs: 0,
     );
-    
-    await SessionDao().insert(correctionSession);
+
+    await SessionDao().insert(resetSession);
 
     setState(() {
-      _seconds=0;
-      _running=false;
-      _sessionStart=null;
+      _baseSeconds = 0;
+      _sessionSeconds = 0;
+      _running = false;
+      _sessionStart = null;
     });
   }
 
@@ -90,11 +98,13 @@ class _CronometroWidgetState extends State<CronometroWidget>{
   @override
    void dispose(){
     if(_running && _sessionStart!=null && _seconds >0){
+      final accumulated = _baseSeconds + _sessionSeconds;
       final session=Session(
         activityId: widget.activityId,
         start: _sessionStart!,
         end:DateTime.now(),
-        durationSecs: _seconds
+        durationSecs: _sessionSeconds,
+        accumulatedSecs: accumulated
       );
       SessionDao().insert(session);
     }
@@ -173,39 +183,21 @@ class _CronometroWidgetState extends State<CronometroWidget>{
 
   Future<void> addManualSession(int minutes) async {
     final now = DateTime.now();
+    final added = minutes * 60;
+    final accumulated = _baseSeconds + added;
 
     final session = Session(
       activityId: widget.activityId,
       start: now,
       end: now,
-      durationSecs: minutes * 60,
+      durationSecs: added,
+      accumulatedSecs: accumulated,
     );
 
     await SessionDao().insert(session);
 
     setState(() {
-      _seconds+=minutes*60;
-    }); // refresca totales
-  } 
-
-  Future<int> getAcumulatedSeconds() async{
-    final allSessions = await SessionDao().getByActivity(widget.activityId);
-    final today = DateTime.now();
-  
-   // Filtramos solo las sesiones de hoy
-    final todaySeconds = allSessions
-      .where((s) =>
-        s.start.year == today.year &&
-        s.start.month == today.month &&
-        s.start.day == today.day).toList();
-
-    final maxSeconds = todaySeconds.isNotEmpty
-    ? todaySeconds.map((s) => s.durationSecs).reduce((a, b) => a > b ? a : b)
-    : 0;
-    // sesiones negativas (correcciones / reset)
-    final corrections = todaySeconds
-      .where((s) => s.durationSecs < 0)
-      .fold<int>(0, (sum, s) => sum + s.durationSecs);
-    return maxSeconds+corrections;
+      _baseSeconds = accumulated;
+    });// refresca totales
   }
 }

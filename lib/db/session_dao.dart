@@ -25,15 +25,20 @@ class SessionDao {
       whereArgs: [id],
     );
   }
-  Future<int> getTotalSecondsForActivity(int activityId) async {
+  Future<int> getAccumulatedSecondsForActivity(int activityId) async {
     final db = await DatabaseHelper.instance.database;
 
-    final result = await db.rawQuery(
-      'SELECT SUM(duration_secs) as total FROM sessions WHERE activity_id = ?',
-      [activityId],
+    final result = await db.query(
+      'sessions',
+      columns: ['accumulatedSecs'],
+      where: 'activityId = ?',
+      whereArgs: [activityId],
+      orderBy: 'end DESC',
+      limit: 1,
     );
 
-    final total = result.first['total'];
-    return total == null ? 0 : total as int;
+    if (result.isEmpty) return 0;
+
+    return result.first['accumulatedSecs'] as int;
   }
 }
