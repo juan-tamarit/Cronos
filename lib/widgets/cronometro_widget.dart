@@ -21,9 +21,15 @@ class _CronometroWidgetState extends State<CronometroWidget>{
   DateTime? _sessionStart;
   Timer? _timer;
   int _baseSeconds = 0;
-  int _sessionSeconds = 0;
   bool _running=false;
-  int get _seconds=>_baseSeconds + _sessionSeconds;
+  int get _seconds{
+    if (!_running || _sessionStart == null) {
+      return _baseSeconds;
+    }
+    final now = DateTime.now();
+    final elapsed = now.difference(_sessionStart!).inSeconds;
+    return _baseSeconds + elapsed;
+  }
   @override
   void initState() {
     super.initState();
@@ -37,7 +43,6 @@ class _CronometroWidgetState extends State<CronometroWidget>{
     if (lastSession == null) {
       setState(() {
         _baseSeconds = 0;
-        _sessionSeconds = 0;
       });
       return;
     }
@@ -54,36 +59,44 @@ class _CronometroWidgetState extends State<CronometroWidget>{
       // Día nuevo → empezamos de cero
       setState(() {
         _baseSeconds = 0;
-        _sessionSeconds = 0;
       });
     } else {
     // Mismo día → usamos acumulado persistido
       setState(() {
         _baseSeconds = lastSession.accumulatedSecs;
-        _sessionSeconds = 0;
       });
     }
   }
 
   void _start(){
-    _sessionStart??=DateTime.now();
     if (_running) return;
-    _timer= Timer.periodic(const Duration(seconds:1),(timer){
-      setState(() {_sessionSeconds++;});
+    setState(() {
+      _sessionStart ??= DateTime.now();
+      _running = true;
     });
-    setState(() {_running=true;});
+    
+    _timer= Timer.periodic(const Duration(seconds:1),(timer){
+      setState(() {});
+    });
+
   }
 
   void _pause() async{
-    if (!_running|| _sessionStart==null||_seconds==0) return;
+    if (!_running|| _sessionStart==null) return;
     _timer?.cancel();
-    final accumulated = _baseSeconds + _sessionSeconds;
-    setState(() {_running=false;});
+    final now = DateTime.now();
+    final sessionSeconds =now.difference(_sessionStart!).inSeconds;
+    final accumulated = _baseSeconds + sessionSeconds;
+    setState(() {
+      _running=false;
+      _baseSeconds = accumulated;
+      _sessionStart = null;
+      });
     final session=Session(
       activityId:widget.activityId, 
-      start:_sessionStart!, 
-      end: DateTime.now(), 
-      durationSecs: _sessionSeconds,
+      start:now.subtract(Duration(seconds: sessionSeconds)), 
+      end: now, 
+      durationSecs: sessionSeconds,
       accumulatedSecs: accumulated
     );
     await SessionDao().insert(session);
@@ -108,7 +121,6 @@ class _CronometroWidgetState extends State<CronometroWidget>{
 
     setState(() {
       _baseSeconds = 0;
-      _sessionSeconds = 0;
       _running = false;
       _sessionStart = null;
     });
@@ -124,12 +136,14 @@ class _CronometroWidgetState extends State<CronometroWidget>{
   @override
    void dispose(){
     if(_running && _sessionStart!=null && _seconds >0){
-      final accumulated = _baseSeconds + _sessionSeconds;
+      final now=DateTime.now();
+      final sessionSeconds =now.difference(_sessionStart!).inSeconds;
+      final accumulated = _baseSeconds + sessionSeconds;
       final session=Session(
         activityId: widget.activityId,
         start: _sessionStart!,
         end:DateTime.now(),
-        durationSecs: _sessionSeconds,
+        durationSecs: sessionSeconds,
         accumulatedSecs: accumulated
       );
       SessionDao().insert(session);
