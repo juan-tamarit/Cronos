@@ -16,7 +16,25 @@ class StatService{
     final todaySeconds= await getTodayTotalSeconds(activityId);
     return todaySeconds>=objetiveMinutes;
   }
-  Future<int> getCurrentStreak(int activity,int objetiveMinutes){}
+  Future<int> getCurrentStreak(int activityId,int objetiveMinutes)async{
+    int streak=0;
+    DateTime currentDay=DateTime.now();
+    while(true){
+      final startOfDay=DateTime(currentDay.year,currentDay.month,currentDay.day);
+      final endOfDay=startOfDay.add(const Duration(days:1));
+
+      final sessions= await _sessionDao.getByActivityBetween(activityId, startOfDay, endOfDay);
+      final totalSeconds= sessions.fold<int>(0,(sum,s)=>sum+s.durationSecs);
+
+      if (totalSeconds>=objetiveMinutes*60){
+        streak++;
+        currentDay=currentDay.subtract(const Duration(days:1));
+      }else{
+        break;
+      }
+    }
+    return streak;
+  }
   //Weekly metrics
   Future<int> getCurrentWeekTotal(int activityId){}
   Future<int> getPreviousWeekTotal(int activityId){}
