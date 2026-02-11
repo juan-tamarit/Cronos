@@ -12,7 +12,10 @@ class StatService{
 
     return sessions.fold<int>(0,(sum,s)=>sum + s.durationSecs);
   }
-  Future<bool> hasCompletedToday(int activityId, int objetiveMinutes){}
+  Future<bool> hasCompletedToday(int activityId, int objetiveMinutes)async{
+    final todaySeconds= await getTodayTotalSeconds(activityId);
+    return todaySeconds>=objetiveMinutes;
+  }
   Future<int> getCurrentStreak(int activity,int objetiveMinutes){}
   //Weekly metrics
   Future<int> getCurrentWeekTotal(int activityId){}
