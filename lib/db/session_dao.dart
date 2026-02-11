@@ -41,7 +41,7 @@ class SessionDao {
 
     return result.first['accumulatedSecs'] as int;
   }
-    Future<Session?> getLastSession(int activityId) async {
+  Future<Session?> getLastSession(int activityId) async {
     final db = await DatabaseHelper.instance.database;
 
     final maps = await db.query(
@@ -54,5 +54,14 @@ class SessionDao {
 
     if (maps.isEmpty) return null;
     return Session.fromMap(maps.first);
+  }
+  Future<List<Session>> getByActivityBetween(int activityId,DateTime start ,DateTime end) async{
+    final db= await DatabaseHelper.instance.database;
+    final result=await db.query(
+      'sessions',
+      where:'activityId=? AND start >=? and start<?',
+      whereArgs: [activityId,start.toIso8601String(),end.toIso8601String()]
+    );
+    return result.map((e)=>Session.fromMap(e)).toList();
   }
 }
