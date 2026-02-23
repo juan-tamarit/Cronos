@@ -59,9 +59,14 @@ class SessionDao {
     final db= await DatabaseHelper.instance.database;
     final result=await db.query(
       'sessions',
-      where:'activityId=? AND start >=? and start<?',
-      whereArgs: [activityId,start.toIso8601String(),end.toIso8601String()]
+      where:'activityId=? AND start >= ? and start < ?',
+      whereArgs: [activityId,start.millisecondsSinceEpoch,end.millisecondsSinceEpoch]
     );
     return result.map((e)=>Session.fromMap(e)).toList();
+  }
+  Future<List<Session>> getAll() async {
+    final db = await DatabaseHelper.instance.database;
+    final maps = await db.query('sessions');
+    return maps.map((m) => Session.fromMap(m)).toList();
   }
 }

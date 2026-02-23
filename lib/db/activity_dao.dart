@@ -82,4 +82,14 @@ class ActivityDao {
       whereArgs: [id]
     );
   }
+  Future<int> getTotalDailyObjectivesSeconds() async {
+    final db = await DatabaseHelper.instance.database;
+
+    final result = await db.rawQuery(
+      'SELECT SUM(objetiveMinutes) as total FROM activities WHERE active = 1',
+    );
+
+    final totalMinutes = result.first['total'] as int? ?? 0;
+    return totalMinutes * 60;
+  }
 }
