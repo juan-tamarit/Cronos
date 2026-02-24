@@ -29,8 +29,8 @@ class Session{
     return Session(
       id: map['id'],
       activityId: map['activityId'],
-      start: DateTime.fromMillisecondsSinceEpoch(int.parse(map['start'])),
-      end: DateTime.fromMillisecondsSinceEpoch(int.parse(map['end'])),
+      start: DateTime.fromMillisecondsSinceEpoch(map['start'] as int),
+      end: DateTime.fromMillisecondsSinceEpoch(map['end'] as int),
       durationSecs: map['durationSecs'],
       accumulatedSecs: map['accumulatedSecs']
     );
