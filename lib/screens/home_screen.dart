@@ -75,18 +75,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   itemCount: _todayActivities.length,
                   itemBuilder: (_, i) {
                     final activity = _todayActivities[i];
+
                     return FutureBuilder<Map<String, dynamic>>(
-                      future: _statService.getTodayStats(
-                          activity.id!, activity.objetiveMinutes),
+                      future: _statService.getTodayStats(activity.id!, activity.objetiveMinutes),
                       builder: (context, snapshot) {
                         if (!snapshot.hasData) {
-                          return ListTile(
-                            title: Text(activity.name, style: const TextStyle(color: Colors.black)),
-                            subtitle: const LinearProgressIndicator(
-                              color: Colors.blue,
-                              backgroundColor: Colors.grey,
-                              minHeight: 8,
-                            ),
+                          return const SizedBox(
+                            height: 80,
+                            child: Center(child: CircularProgressIndicator()),
                           );
                         }
 
@@ -96,45 +92,69 @@ class _HomeScreenState extends State<HomeScreen> {
                         final streak = stats['streak'] as int;
                         final progress = stats['progress'] as double;
 
-                        // checkbox estilo unicode
-                        final checkbox = completed ? '☑' : '☐';
-
-                        return Card(
-                          color: Colors.white,
-                          margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-                          child: ListTile(
-                            title: Text(
-                              activity.name,
-                              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                        return InkWell(
+                          onTap: () async{
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ActivityScreen(activity: activity),
+                              ),
+                            );
+                            _loadTodayActivities();
+                          },
+                          child: Card(
+                            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            color: Colors.white,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  // Info de actividad (nombre, barra y racha)
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          activity.name,
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        LinearProgressIndicator(
+                                          value: progress,
+                                          color: Colors.blue,
+                                          backgroundColor: Colors.grey[300],
+                                          minHeight: 8,
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          'Hoy: ${todaySeconds ~/ 60} min de ${activity.objetiveMinutes} min • Racha: $streak días',
+                                          style: const TextStyle(color: Colors.black, fontSize: 12),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  // Checkbox a la derecha
+                                  Transform.scale(
+                                    scale: 1.5,
+                                    child: Checkbox(
+                                      value: completed,
+                                      onChanged: null, // deshabilitado, solo indicador
+                                      fillColor: MaterialStateProperty.resolveWith<Color?>(
+                                        (states) {
+                                          if (completed) return Colors.blue;
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 4),
-                                LinearProgressIndicator(
-                                  value: progress,
-                                  minHeight: 8,
-                                  backgroundColor: Colors.grey[300],
-                                  color: Colors.blue,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Hoy: ${todaySeconds ~/ 60} min de ${activity.objetiveMinutes} min • Racha: $streak días',
-                                  style: const TextStyle(fontSize: 12, color: Colors.black),
-                                ),
-                                Text(
-                                  checkbox,
-                                  style: const TextStyle(fontSize: 18, color: Colors.black),
-                                ),
-                              ],
-                            ),
-                            onTap: () {
-                              Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          ActivityScreen(activity: activity)));
-                            },
                           ),
                         );
                       },
