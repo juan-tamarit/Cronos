@@ -64,6 +64,20 @@ class StatService {
     return streak;
   }
 
+  Future<Map<String, dynamic>> getTodayStats(int activityId, int objetiveMinutes) async {
+    final todaySeconds = await getTodayTotalSeconds(activityId);
+    final completed = todaySeconds >= objetiveMinutes * 60;
+    final streak = await getCurrentStreak(activityId, objetiveMinutes);
+    final progress = todaySeconds / (objetiveMinutes * 60);
+
+    return {
+      'todaySeconds': todaySeconds,
+      'completed': completed,
+      'streak': streak,
+      'progress': progress.clamp(0.0, 1.0),
+    };
+  }
+
   // ─── Weekly metrics ───────────────────────────────────────────
   DateTime _startOfCurrentWeek() {
     final now = DateTime.now();
