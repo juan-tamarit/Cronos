@@ -167,14 +167,12 @@ class StatService{
       endOfRange.millisecondsSinceEpoch,
     ]);
 
-    // Inicializamos todas las semanas en 0
     List<int> weeklyTotals = List.filled(n, 0);
 
     for (final row in result) {
       final weekIndex = (row['weekIndex'] as num).toInt();
       final total = row['total'] as int? ?? 0;
 
-      // weekIndex será 0 (actual), -1, -2, ...
       final position = n - 1 + weekIndex;
 
       if (position >= 0 && position < n) {
@@ -310,13 +308,11 @@ class StatService{
       GROUP BY weekday
     ''', [activityId]);
 
-    // Inicializamos todos los días a 0
     Map<int,int> totals = {1:0,2:0,3:0,4:0,5:0,6:0,7:0};
 
     for (final row in result) {
-      // SQLite devuelve weekday 0=domingo, 1=lunes ... 6=sábado
       int sqliteWeekday = int.parse(row['weekday'] as String);
-      int dartWeekday = sqliteWeekday == 0 ? 7 : sqliteWeekday; // convertir a Dart weekday
+      int dartWeekday = sqliteWeekday == 0 ? 7 : sqliteWeekday; 
       totals[dartWeekday] = row['total'] as int? ?? 0;
     }
 
