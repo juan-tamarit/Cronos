@@ -36,13 +36,15 @@ class DatabaseHelper {
       CREATE TABLE sessions(
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       activityId INTEGER NOT NULL,
-      start TEXT NOT NULL,
-      end TEXT NOT NULL,
+      start INTEGER NOT NULL,
+      end INTEGER NOT NULL,
       durationSecs INTEGER NOT NULL,
       accumulatedSecs INTEGER NOT NULL,
       FOREIGN KEY(activityId) REFERENCES activities (id)
       )
     ''');
+    await db.execute('CREATE INDEX idx_sessions_start ON sessions(start)');
+    await db.execute('CREATE INDEX idx_sessions_activity_start ON sessions(activityId, start)');
   }
   Future <int> insertActivity(Map<String,dynamic> activityMap) async {
     final db= await database;
