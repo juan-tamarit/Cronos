@@ -1,14 +1,12 @@
-import 'package:cronos/db/session_dao.dart';
 import 'package:cronos/db/activity_dao.dart';
 import 'package:cronos/db/database_helper.dart';
 
-class StatService{
-  final SessionDao _sessionDao=SessionDao();
+class StatService {
   final ActivityDao _activityDao = ActivityDao();
-  //Daily metrics
+
+  // ─── Daily metrics ─────────────────────────────────────────────
   Future<int> getTodayTotalSeconds(int activityId) async {
     final db = await DatabaseHelper.instance.database;
-
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
@@ -16,37 +14,30 @@ class StatService{
     final result = await db.rawQuery('''
       SELECT SUM(durationSecs) as total
       FROM sessions
-      WHERE activityId = ?
-        AND start >= ?
-        AND start < ?
+      WHERE activityId = ? AND start >= ? AND start < ?
     ''', [
       activityId,
       startOfDay.millisecondsSinceEpoch,
       endOfDay.millisecondsSinceEpoch,
     ]);
 
-    final total = result.first['total'] as int?;
-    return total ?? 0;
+    return result.first['total'] as int? ?? 0;
   }
-  Future<bool> hasCompletedToday(int activityId, int objetiveMinutes)async{
-    final todaySeconds= await getTodayTotalSeconds(activityId);
-    return todaySeconds>=objetiveMinutes;
+
+  Future<bool> hasCompletedToday(int activityId, int objetiveMinutes) async {
+    final todaySeconds = await getTodayTotalSeconds(activityId);
+    return todaySeconds >= objetiveMinutes * 60;
   }
+
   Future<int> getCurrentStreak(int activityId, int objetiveMinutes) async {
     final db = await DatabaseHelper.instance.database;
-
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final todayKey =
-        today.millisecondsSinceEpoch ~/ 86400000;
+    final today = DateTime.now();
+    final todayKey = today.millisecondsSinceEpoch ~/ 86400000;
 
     final result = await db.rawQuery('''
-      SELECT 
-        (start / 86400000) as dayKey,
-        SUM(durationSecs) as total
+      SELECT (start / 86400000) as dayKey, SUM(durationSecs) as total
       FROM sessions
-      WHERE activityId = ?
-        AND start <= ?
+      WHERE activityId = ? AND start <= ?
       GROUP BY dayKey
       ORDER BY dayKey DESC
     ''', [
@@ -61,10 +52,7 @@ class StatService{
       final dayKey = (row['dayKey'] as num).toInt();
       final total = row['total'] as int? ?? 0;
 
-      if (dayKey != expectedDayKey) {
-        break;
-      }
-
+      if (dayKey != expectedDayKey) break;
       if (total >= objetiveMinutes * 60) {
         streak++;
         expectedDayKey--;
@@ -75,89 +63,82 @@ class StatService{
 
     return streak;
   }
-  //Weekly metrics
+
+  // ─── Weekly metrics ───────────────────────────────────────────
   DateTime _startOfCurrentWeek() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     return today.subtract(Duration(days: today.weekday - 1));
   }
-  DateTime _endOfCurrentWeek() {
-    final start = _startOfCurrentWeek();
-    return start.add(const Duration(days: 7));
-  }
+
   Future<int> getCurrentWeekTotal(int activityId) async {
     final db = await DatabaseHelper.instance.database;
-    final startOfWeek = _startOfCurrentWeek();
-    final endOfWeek = _endOfCurrentWeek();
+    final start = _startOfCurrentWeek();
+    final end = start.add(const Duration(days: 7));
 
     final result = await db.rawQuery('''
       SELECT SUM(durationSecs) as total
       FROM sessions
-      WHERE activityId = ?
-        AND start >= ? AND start < ?
+      WHERE activityId = ? AND start >= ? AND start < ?
     ''', [
       activityId,
-      startOfWeek.millisecondsSinceEpoch,
-      endOfWeek.millisecondsSinceEpoch,
+      start.millisecondsSinceEpoch,
+      end.millisecondsSinceEpoch,
     ]);
 
     return result.first['total'] as int? ?? 0;
   }
+
   Future<int> getPreviousWeekTotal(int activityId) async {
     final db = await DatabaseHelper.instance.database;
-    final startOfThisWeek = _startOfCurrentWeek();
-    final startOfPreviousWeek = startOfThisWeek.subtract(const Duration(days: 7));
-    final endOfPreviousWeek = startOfThisWeek;
+    final start = _startOfCurrentWeek().subtract(const Duration(days: 7));
+    final end = _startOfCurrentWeek();
 
     final result = await db.rawQuery('''
       SELECT SUM(durationSecs) as total
       FROM sessions
-      WHERE activityId = ?
-        AND start >= ? AND start < ?
+      WHERE activityId = ? AND start >= ? AND start < ?
     ''', [
       activityId,
-      startOfPreviousWeek.millisecondsSinceEpoch,
-      endOfPreviousWeek.millisecondsSinceEpoch,
+      start.millisecondsSinceEpoch,
+      end.millisecondsSinceEpoch,
     ]);
 
     return result.first['total'] as int? ?? 0;
   }
+
   Future<double> getWeeklyAverage(int activityId, int numberOfWeeks) async {
-    final startOfThisWeek = _startOfCurrentWeek();
-    DateTime startPeriod =
-      startOfThisWeek.subtract(Duration(days: 7 * (numberOfWeeks - 1)));
-    final endPeriod = startOfThisWeek.add(const Duration(days: 7));
-
-    final sessions = await _sessionDao.getByActivityBetween(
-      activityId,
-      startPeriod,
-      endPeriod,
-    );
-
-    final totalSeconds =
-      sessions.fold<int>(0, (sum, s) => sum + s.durationSecs);
-
-    return totalSeconds / numberOfWeeks;
-  }
-  Future<List<int>> getLastNWeeksTotals(int activityId, int n) async {
     final db = await DatabaseHelper.instance.database;
-
     final startOfThisWeek = _startOfCurrentWeek();
     final startOfRange =
-        startOfThisWeek.subtract(Duration(days: 7 * (n - 1)));
-    final endOfRange =
-        startOfThisWeek.add(const Duration(days: 7));
-
-    const int weekMillis = 7 * 86400000;
+        startOfThisWeek.subtract(Duration(days: 7 * (numberOfWeeks - 1)));
+    final endOfRange = startOfThisWeek.add(const Duration(days: 7));
 
     final result = await db.rawQuery('''
-      SELECT 
-        ((start - ?) / ?) as weekIndex,
-        SUM(durationSecs) as total
+      SELECT SUM(durationSecs) as total
       FROM sessions
-      WHERE activityId = ?
-        AND start >= ?
-        AND start < ?
+      WHERE activityId = ? AND start >= ? AND start < ?
+    ''', [
+      activityId,
+      startOfRange.millisecondsSinceEpoch,
+      endOfRange.millisecondsSinceEpoch,
+    ]);
+
+    final totalSeconds = result.first['total'] as int? ?? 0;
+    return totalSeconds / numberOfWeeks;
+  }
+
+  Future<List<int>> getLastNWeeksTotals(int activityId, int n) async {
+    final db = await DatabaseHelper.instance.database;
+    final startOfThisWeek = _startOfCurrentWeek();
+    final startOfRange = startOfThisWeek.subtract(Duration(days: 7 * (n - 1)));
+    final endOfRange = startOfThisWeek.add(const Duration(days: 7));
+    const weekMillis = 7 * 86400000;
+
+    final result = await db.rawQuery('''
+      SELECT ((start - ?) / ?) as weekIndex, SUM(durationSecs) as total
+      FROM sessions
+      WHERE activityId = ? AND start >= ? AND start < ?
       GROUP BY weekIndex
     ''', [
       startOfThisWeek.millisecondsSinceEpoch,
@@ -172,17 +153,14 @@ class StatService{
     for (final row in result) {
       final weekIndex = (row['weekIndex'] as num).toInt();
       final total = row['total'] as int? ?? 0;
-
       final position = n - 1 + weekIndex;
-
-      if (position >= 0 && position < n) {
-        weeklyTotals[position] = total;
-      }
+      if (position >= 0 && position < n) weeklyTotals[position] = total;
     }
 
     return weeklyTotals;
   }
-  //Monthly metrics
+
+  // ─── Monthly metrics ─────────────────────────────────────────
   DateTime _startOfCurrentMonth() {
     final now = DateTime.now();
     return DateTime(now.year, now.month, 1);
@@ -193,52 +171,43 @@ class StatService{
     return DateTime(now.year, now.month + 1, 1);
   }
 
-  DateTime _startOfCurrentYear() {
-    final now = DateTime.now();
-    return DateTime(now.year, 1, 1);
-  }
-
-  DateTime _startOfNextYear() {
-    final now = DateTime.now();
-    return DateTime(now.year + 1, 1, 1);
-  }
   Future<int> getCurrentMonthTotal(int activityId) async {
     final db = await DatabaseHelper.instance.database;
-    final startOfMonth = _startOfCurrentMonth();
-    final startOfNextMonth = _startOfNextMonth();
+    final start = _startOfCurrentMonth();
+    final end = _startOfNextMonth();
 
     final result = await db.rawQuery('''
       SELECT SUM(durationSecs) as total
       FROM sessions
-      WHERE activityId = ?
-        AND start >= ? AND start < ?
+      WHERE activityId = ? AND start >= ? AND start < ?
     ''', [
       activityId,
-      startOfMonth.millisecondsSinceEpoch,
-      startOfNextMonth.millisecondsSinceEpoch,
+      start.millisecondsSinceEpoch,
+      end.millisecondsSinceEpoch,
     ]);
 
     return result.first['total'] as int? ?? 0;
   }
+
   Future<int> getPreviousMonthTotal(int activityId) async {
     final db = await DatabaseHelper.instance.database;
     final now = DateTime.now();
-    final startOfCurrentMonth = DateTime(now.year, now.month, 1);
-    final startOfPreviousMonth = DateTime(now.year, now.month - 1, 1);
+    final start = DateTime(now.year, now.month - 1, 1);
+    final end = DateTime(now.year, now.month, 1);
 
     final result = await db.rawQuery('''
       SELECT SUM(durationSecs) as total
       FROM sessions
-      WHERE activityId = ?
-        AND start >= ? AND start < ?
+      WHERE activityId = ? AND start >= ? AND start < ?
     ''', [
       activityId,
-      startOfPreviousMonth.millisecondsSinceEpoch,
-      startOfCurrentMonth.millisecondsSinceEpoch,
+      start.millisecondsSinceEpoch,
+      end.millisecondsSinceEpoch,
     ]);
 
     return result.first['total'] as int? ?? 0;
   }
+
   Future<List<int>> getLastNMonthsTotals(int activityId, int n) async {
     final db = await DatabaseHelper.instance.database;
     final now = DateTime.now();
@@ -246,12 +215,10 @@ class StatService{
     final endOfRange = DateTime(now.year, now.month + 1, 1);
 
     final result = await db.rawQuery('''
-      SELECT strftime('%Y-%m', start / 1000, 'unixepoch') as month,
-            SUM(durationSecs) as total
+      SELECT strftime('%Y-%m', start / 1000, 'unixepoch') as month, 
+             SUM(durationSecs) as total
       FROM sessions
-      WHERE activityId = ?
-        AND start >= ?
-        AND start < ?
+      WHERE activityId = ? AND start >= ? AND start < ?
       GROUP BY month
       ORDER BY month
     ''', [
@@ -263,61 +230,58 @@ class StatService{
     List<int> monthlyTotals = List.filled(n, 0);
 
     for (final row in result) {
-      final monthStr = row['month'] as String;
-      final total = row['total'] as int? ?? 0;
-
-      final parts = monthStr.split('-');
+      final parts = (row['month'] as String).split('-');
       final year = int.parse(parts[0]);
       final month = int.parse(parts[1]);
-
+      final total = row['total'] as int? ?? 0;
       final position = (year - startOfRange.year) * 12 + (month - startOfRange.month);
-      if (position >= 0 && position < n) {
-        monthlyTotals[position] = total;
-      }
+      if (position >= 0 && position < n) monthlyTotals[position] = total;
     }
 
     return monthlyTotals;
   }
+
   Future<int> getCurrentYearTotal(int activityId) async {
     final db = await DatabaseHelper.instance.database;
-    final startOfYear = _startOfCurrentYear();
-    final startOfNextYear = _startOfNextYear();
+    final start = DateTime(DateTime.now().year, 1, 1);
+    final end = DateTime(DateTime.now().year + 1, 1, 1);
 
     final result = await db.rawQuery('''
       SELECT SUM(durationSecs) as total
       FROM sessions
-      WHERE activityId = ?
-        AND start >= ? AND start < ?
+      WHERE activityId = ? AND start >= ? AND start < ?
     ''', [
       activityId,
-      startOfYear.millisecondsSinceEpoch,
-      startOfNextYear.millisecondsSinceEpoch,
+      start.millisecondsSinceEpoch,
+      end.millisecondsSinceEpoch,
     ]);
 
     return result.first['total'] as int? ?? 0;
   }
-  //Habits metrics
-  Future<Map<int,int>> getTimeByWeekDay(int activityId) async {
+
+  // ─── Habits metrics ──────────────────────────────────────────
+  Future<Map<int, int>> getTimeByWeekDay(int activityId) async {
     final db = await DatabaseHelper.instance.database;
 
     final result = await db.rawQuery('''
       SELECT strftime('%w', start / 1000, 'unixepoch') as weekday,
-            SUM(durationSecs) as total
+             SUM(durationSecs) as total
       FROM sessions
       WHERE activityId = ?
       GROUP BY weekday
     ''', [activityId]);
 
-    Map<int,int> totals = {1:0,2:0,3:0,4:0,5:0,6:0,7:0};
+    Map<int, int> totals = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0};
 
     for (final row in result) {
       int sqliteWeekday = int.parse(row['weekday'] as String);
-      int dartWeekday = sqliteWeekday == 0 ? 7 : sqliteWeekday; 
+      int dartWeekday = sqliteWeekday == 0 ? 7 : sqliteWeekday;
       totals[dartWeekday] = row['total'] as int? ?? 0;
     }
 
     return totals;
   }
+
   Future<double> getAverageSessionDuration(int activityId) async {
     final db = await DatabaseHelper.instance.database;
 
@@ -329,11 +293,9 @@ class StatService{
 
     final total = result.first['total'] as int? ?? 0;
     final count = result.first['count'] as int? ?? 0;
-
-    if (count == 0) return 0;
-
-    return total / count;
+    return count == 0 ? 0 : total / count;
   }
+
   Future<int> getSessionsCount(int activityId) async {
     final db = await DatabaseHelper.instance.database;
 
@@ -345,6 +307,7 @@ class StatService{
 
     return result.first['count'] as int? ?? 0;
   }
+
   Future<double> getAverageSessionPerDay(int activityId) async {
     final db = await DatabaseHelper.instance.database;
 
@@ -356,7 +319,6 @@ class StatService{
 
     final count = result.first['count'] as int? ?? 0;
     final firstMillis = result.first['first'] as int?;
-
     if (count == 0 || firstMillis == null) return 0;
 
     final firstDay = DateTime.fromMillisecondsSinceEpoch(firstMillis);
@@ -367,10 +329,10 @@ class StatService{
 
     return count / daysDifference;
   }
-  //Global
-  Future<int> getGlobalTodayTotal() async {
-    final db = await DatabaseHelper.instance.database; 
 
+  // ─── Global metrics ─────────────────────────────────────────
+  Future<int> getGlobalTodayTotal() async {
+    final db = await DatabaseHelper.instance.database;
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
@@ -384,16 +346,12 @@ class StatService{
       endOfDay.millisecondsSinceEpoch,
     ]);
 
-    final total = result.first['total'] as int?;
-    return total ?? 0;
+    return result.first['total'] as int? ?? 0;
   }
+
   Future<double> getGlobalTodayCompeltionPercentage() async {
     final todayTotal = await getGlobalTodayTotal();
-    final objectivesTotal =
-        await _activityDao.getTotalDailyObjectivesSeconds();
-
-    if (objectivesTotal == 0) return 0;
-
-    return (todayTotal / objectivesTotal) * 100;
+    final objectivesTotal = await _activityDao.getTotalDailyObjectivesSeconds();
+    return objectivesTotal == 0 ? 0 : (todayTotal / objectivesTotal) * 100;
   }
 }
