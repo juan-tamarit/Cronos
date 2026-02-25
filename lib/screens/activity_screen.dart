@@ -71,9 +71,7 @@ class ActivityScreen extends StatelessWidget {
                 ]),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
+                    return const Center(child: CircularProgressIndicator());
                   }
 
                   final totalWeekSeconds = snapshot.data![0] as int;
@@ -81,7 +79,6 @@ class ActivityScreen extends StatelessWidget {
 
                   final days = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
-                  // 🔹 Determinar máximo dinámico
                   final objectiveSeconds = activity.objetiveMinutes * 60;
                   final maxDaySeconds =
                       dailyTotals.reduce((a, b) => a > b ? a : b);
@@ -90,6 +87,14 @@ class ActivityScreen extends StatelessWidget {
                       maxDaySeconds > objectiveSeconds
                           ? maxDaySeconds
                           : objectiveSeconds;
+
+                  final todayIndex = DateTime.now().weekday - 1;
+
+                  final weeklyObjective = objectiveSeconds * 7;
+                  final weeklyPercentage =
+                      weeklyObjective == 0
+                          ? 0
+                          : (totalWeekSeconds / weeklyObjective) * 100;
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -101,7 +106,15 @@ class ActivityScreen extends StatelessWidget {
                           color: Colors.black,
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Cumplimiento semanal: ${weeklyPercentage.toStringAsFixed(0)}%',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
 
                       Column(
                         children: List.generate(7, (index) {
@@ -109,6 +122,9 @@ class ActivityScreen extends StatelessWidget {
                           final minutes = seconds ~/ 60;
                           final progress =
                               maxScale == 0 ? 0.0 : seconds / maxScale;
+
+                          final isToday = index == todayIndex;
+                          final exceeded = seconds >= objectiveSeconds;
 
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 8),
@@ -118,22 +134,46 @@ class ActivityScreen extends StatelessWidget {
                                   width: 25,
                                   child: Text(
                                     days[index],
-                                    style: const TextStyle(
-                                        color: Colors.black),
+                                    style: TextStyle(
+                                      color: isToday ? Colors.blue : Colors.black,
+                                      fontWeight:
+                                          isToday ? FontWeight.bold : FontWeight.normal,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(6),
-                                    child: LinearProgressIndicator(
-                                      value: progress.clamp(0.0, 1.0),
-                                      minHeight: 10,
-                                      backgroundColor: Colors.grey[300],
-                                      valueColor:
-                                          const AlwaysStoppedAnimation<Color>(
-                                              Colors.blue),
-                                    ),
+                                  child: Stack(
+                                    alignment: Alignment.centerLeft,
+                                    children: [
+                                      // Línea objetivo
+                                      if (maxScale > objectiveSeconds)
+                                        Positioned(
+                                          left: (objectiveSeconds / maxScale) *
+                                              MediaQuery.of(context).size.width *
+                                              0.6,
+                                          child: Container(
+                                            width: 2,
+                                            height: 14,
+                                            color: Colors.black26,
+                                          ),
+                                        ),
+
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: LinearProgressIndicator(
+                                          value: progress.clamp(0.0, 1.0),
+                                          minHeight: isToday ? 14 : 10,
+                                          backgroundColor: Colors.grey[300],
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                            exceeded
+                                                ? Colors.green
+                                                : Colors.blue,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 const SizedBox(width: 8),
