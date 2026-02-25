@@ -173,7 +173,39 @@ class StatService {
 
     return weeklyTotals;
   }
+  Future<List<int>> getCurrentWeekDailyTotals(int activityId) async {
+    final db = await DatabaseHelper.instance.database;
 
+    final startOfWeek = _startOfCurrentWeek();
+    final endOfWeek = startOfWeek.add(const Duration(days: 7));
+
+    final result = await db.rawQuery('''
+      SELECT ((start - ?) / 86400000) as dayIndex,
+            SUM(durationSecs) as total
+      FROM sessions
+      WHERE activityId = ? AND start >= ? AND start < ?
+      GROUP BY dayIndex
+    ''', [
+      startOfWeek.millisecondsSinceEpoch,
+      activityId,
+      startOfWeek.millisecondsSinceEpoch,
+      endOfWeek.millisecondsSinceEpoch,
+    ]);
+
+    // Lunes = 0 ... Domingo = 6
+    List<int> dailyTotals = List.filled(7, 0);
+
+    for (final row in result) {
+      final dayIndex = (row['dayIndex'] as num).toInt();
+      final total = row['total'] as int? ?? 0;
+
+      if (dayIndex >= 0 && dayIndex < 7) {
+        dailyTotals[dayIndex] = total;
+      }
+    }
+
+    return dailyTotals;
+  }
   // ─── Monthly metrics ─────────────────────────────────────────
   DateTime _startOfCurrentMonth() {
     final now = DateTime.now();
