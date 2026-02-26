@@ -17,7 +17,6 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen>{
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     _loadActivites();
   }
@@ -32,8 +31,13 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen>{
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Actividades')),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.blue,
+        title: const Text('Actividades', style: TextStyle(color: Colors.black)),
+      ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.blue,
         onPressed: () async{
           await Navigator.push(
             context,
@@ -41,35 +45,47 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen>{
           );
           _loadActivites();
         },
-        child:const Icon(Icons.add)
+        child: const Icon(Icons.add, color: Colors.white),
       ),
       body: ListView.builder(
         itemCount: _activities.length,
         itemBuilder: (_, i){
           final a = _activities[i];
-          return ListTile(
-            title: Text (a.name),
-            subtitle: Text ('${a.objetiveMinutes} min'),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children:[
-                IconButton(onPressed:()=> _toggleActive(a) , icon: Icon(a.active?Icons.check_circle:Icons.pause_circle),color: a.active?Colors.green:Colors.red,),
-                IconButton(onPressed:()=> _deleteActivity(a), icon: Icon(Icons.delete, color: Colors.red))
-              ]
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            color: Colors.white,
+            child: ListTile(
+              title: Text(a.name, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              subtitle: Text('${a.objetiveMinutes} min', style: const TextStyle(color: Colors.black)),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children:[
+                  IconButton(
+                    onPressed:()=> _toggleActive(a),
+                    icon: Icon(a.active?Icons.check_circle:Icons.pause_circle),
+                    color: a.active?Colors.green:Colors.red,
+                  ),
+                  IconButton(
+                    onPressed:()=> _deleteActivity(a),
+                    icon: const Icon(Icons.delete),
+                    color: Colors.red,
+                  ),
+                ]
+              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_)=> ActivityScreen(activity: a))
+                );
+              },
+              onLongPress: () async{
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_)=> ActivityFormScreen(activity: a))
+                );
+                _loadActivites();
+              }
             ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_)=> ActivityScreen(activity: a))
-              );
-            },
-            onLongPress: () async{
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_)=> ActivityFormScreen(activity: a))
-              );
-              _loadActivites();
-            }
           );
         },
       )
@@ -83,27 +99,27 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen>{
   }
 
   Future<void> _deleteActivity(Activity a) async {
-  final confirm = await showDialog<bool>(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: const Text('Eliminar actividad'),
-      content: Text('¿Seguro que quieres eliminar "${a.name}"?'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancelar'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('Eliminar'),
-        ),
-      ],
-    ),
-  );
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Eliminar actividad', style: TextStyle(color: Colors.black)),
+        content: Text('¿Seguro que quieres eliminar "${a.name}"?', style: const TextStyle(color: Colors.black)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.black)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
 
-  if (confirm == true) {
-    await _dao.delete(a.id!);
-    _loadActivites();
+    if (confirm == true) {
+      await _dao.delete(a.id!);
+      _loadActivites();
+    }
   }
-}
 }

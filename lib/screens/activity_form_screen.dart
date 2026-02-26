@@ -31,37 +31,49 @@ class _ActivityFormScreenState extends State<ActivityFormScreen>{
     _daysWeek= widget.activity?.daysWeek?? [];
     _active= widget.activity?.active ?? true;
   }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text( widget.activity==null
-        ? 'Nueva Actividad'
-        : 'Editar Actividad'),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.blue,
+        title: Text(
+          widget.activity==null ? 'Nueva Actividad' : 'Editar Actividad',
+          style: const TextStyle(color: Colors.black),
+        ),
       ),
-      body:Padding(
+      body: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-          child:ListView(
+          child: ListView(
             children: [
               _buildNameField(),
+              const SizedBox(height: 12),
               _buildDescriptionField(),
+              const SizedBox(height: 12),
               _buildObjetiveField(),
+              const SizedBox(height: 16),
               _buildDaysSelector(),
+              const SizedBox(height: 16),
               _buildActiveSwitch(),
-              const SizedBox(height:24),
-              _buildSveButton()
-            ]
+              const SizedBox(height: 24),
+              _buildSaveButton(),
+            ],
           ),
-        ) 
-      )
+        ),
+      ),
     );
   }
 
   Widget _buildNameField(){
     return TextFormField(
       controller: _nameController,
-      decoration: const InputDecoration(labelText: 'Nombre'),
+      decoration: const InputDecoration(
+        labelText: 'Nombre',
+        border: OutlineInputBorder(),
+      ),
       validator: (value){
         if (value==null|| value.trim().isEmpty){
           return 'El nombre es obligatorio';
@@ -70,17 +82,25 @@ class _ActivityFormScreenState extends State<ActivityFormScreen>{
       }
     );
   }
+
   Widget _buildDescriptionField(){
     return TextFormField(
       controller: _descriptionController,
-      decoration: const InputDecoration(labelText: 'Descripción'),
+      decoration: const InputDecoration(
+        labelText: 'Descripción',
+        border: OutlineInputBorder(),
+      ),
     );
   }
+
   Widget _buildObjetiveField(){
     return TextFormField(
       controller: _objetiveController,
       keyboardType: TextInputType.number,
-      decoration: const InputDecoration(labelText: 'Objetivo(minutos)'),
+      decoration: const InputDecoration(
+        labelText: 'Objetivo (minutos)',
+        border: OutlineInputBorder(),
+      ),
       validator: (value){
         if (value==null|| int.tryParse(value)==null){
           return 'Introduce un número válido';
@@ -89,6 +109,7 @@ class _ActivityFormScreenState extends State<ActivityFormScreen>{
       }
     );
   }
+
   Widget _buildDaysSelector(){
     final days=['L','M','X','J','V','S','D'];
 
@@ -96,8 +117,9 @@ class _ActivityFormScreenState extends State<ActivityFormScreen>{
       spacing: 8,
       children: List.generate(days.length,(index){
         return FilterChip(
-          label: Text(days[index]),
+          label: Text(days[index], style: const TextStyle(color: Colors.black)),
           selected: _daysWeek.contains(index),
+          selectedColor: Colors.blue.withOpacity(0.3),
           onSelected: (selected){
             setState(() {
               selected
@@ -112,8 +134,9 @@ class _ActivityFormScreenState extends State<ActivityFormScreen>{
 
   Widget _buildActiveSwitch(){
     return SwitchListTile(
-      title: const Text('Activa'),
+      title: const Text('Activa', style: TextStyle(color: Colors.black)),
       value: _active,
+      activeColor: Colors.blue,
       onChanged: (value){
         setState(() {
           _active=value;
@@ -121,10 +144,16 @@ class _ActivityFormScreenState extends State<ActivityFormScreen>{
       }
     );
   }
-  Widget _buildSveButton(){
+
+  Widget _buildSaveButton(){
     return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+      ),
       onPressed: _save,
-      child: const Text('Guardar')
+      child: const Text('Guardar'),
     );
   }
 

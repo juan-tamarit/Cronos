@@ -47,10 +47,8 @@ class _InsightScreenState extends State<InsightScreen> {
 
     for (final activity in activities) {
       final id = activity.id!;
-      currentWeek[id] =
-          await _statService.getCurrentWeekTotal(id);
-      previousWeek[id] =
-          await _statService.getPreviousWeekTotal(id);
+      currentWeek[id] = await _statService.getCurrentWeekTotal(id);
+      previousWeek[id] = await _statService.getPreviousWeekTotal(id);
       streaks[id] =
           await _statService.getCurrentStreak(id, activity.objetiveMinutes);
     }
@@ -88,10 +86,15 @@ class _InsightScreenState extends State<InsightScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
-      appBar: AppBar(title: const Text("Insights")),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.blue,
+        title: const Text(
+          "Insights",
+          style: TextStyle(color: Colors.black),
+        ),
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -101,9 +104,9 @@ class _InsightScreenState extends State<InsightScreen> {
                 children: [
                   _buildPeriodSelector(),
                   const SizedBox(height: 24),
-                  _buildChart(theme),
+                  _buildChart(),
                   const SizedBox(height: 32),
-                  _buildActivitiesList(theme),
+                  _buildActivitiesList(),
                 ],
               ),
             ),
@@ -118,7 +121,11 @@ class _InsightScreenState extends State<InsightScreen> {
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ChoiceChip(
-              label: Text(_periodLabel(period)),
+              label: Text(
+                _periodLabel(period),
+                style: const TextStyle(color: Colors.black),
+              ),
+              selectedColor: Colors.blue,
               selected: period == _selectedPeriod,
               onSelected: (_) async {
                 setState(() => _selectedPeriod = period);
@@ -131,7 +138,7 @@ class _InsightScreenState extends State<InsightScreen> {
     );
   }
 
-  Widget _buildChart(ThemeData theme) {
+  Widget _buildChart() {
     if (_globalTotals.isEmpty) {
       return const SizedBox(height: 200);
     }
@@ -153,22 +160,26 @@ class _InsightScreenState extends State<InsightScreen> {
                 BarChartRodData(
                   toY: minutes,
                   borderRadius: BorderRadius.circular(6),
+                  color: Colors.blue,
                 ),
               ],
             );
           }),
           titlesData: FlTitlesData(
-            rightTitles:  AxisTitles(
+            rightTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 interval: interval,
                 reservedSize: 40,
                 getTitlesWidget: (value, meta) {
-                  return Text(value.toInt().toString());
+                  return Text(
+                    value.toInt().toString(),
+                    style: const TextStyle(color: Colors.black),
+                  );
                 },
               ),
             ),
-            leftTitles:const AxisTitles(
+            leftTitles: const AxisTitles(
               sideTitles: SideTitles(showTitles: false),
             ),
             bottomTitles: const AxisTitles(
@@ -182,11 +193,18 @@ class _InsightScreenState extends State<InsightScreen> {
     );
   }
 
-  Widget _buildActivitiesList(ThemeData theme) {
+  Widget _buildActivitiesList() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Actividades", style: theme.textTheme.titleLarge),
+        const Text(
+          "Actividades",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
         const SizedBox(height: 16),
         ..._activities.map((activity) {
           final id = activity.id!;
@@ -198,9 +216,21 @@ class _InsightScreenState extends State<InsightScreen> {
           final color = _getComparisonColor(current, previous);
 
           return Card(
+            color: Colors.white,
+            margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 6),
             child: ListTile(
-              title: Text(activity.name),
-              subtitle: Text("🔥 Racha: $streak días"),
+              title: Text(
+                activity.name,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              subtitle: Text(
+                "Racha: $streak días",
+                style: const TextStyle(color: Colors.black, fontSize: 12),
+              ),
               trailing: Text(
                 "$minutes min",
                 style: TextStyle(
@@ -212,8 +242,7 @@ class _InsightScreenState extends State<InsightScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) =>
-                        InsightActivityScreen(activity: activity),
+                    builder: (_) => InsightActivityScreen(activity: activity),
                   ),
                 ).then((_) => _loadData());
               },

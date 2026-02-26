@@ -43,7 +43,6 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
     final activityId = widget.activity.id!;
     final objectiveMinutes = widget.activity.objetiveMinutes;
 
-    // Totales por período
     List<int> totals;
     int totalSec = 0;
     int prevSec = 0;
@@ -123,10 +122,15 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
-      appBar: AppBar(title: Text(widget.activity.name)),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.blue,
+        title: Text(
+          widget.activity.name,
+          style: const TextStyle(color: Colors.black),
+        ),
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -136,11 +140,11 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
                 children: [
                   _buildPeriodSelector(),
                   const SizedBox(height: 24),
-                  _buildChart(theme),
+                  _buildChart(),
                   const SizedBox(height: 32),
-                  _buildStats(theme),
+                  _buildStats(),
                   const SizedBox(height: 32),
-                  _buildAdvancedStats(theme),
+                  _buildAdvancedStats(),
                 ],
               ),
             ),
@@ -155,7 +159,11 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ChoiceChip(
-              label: Text(_periodLabel(period)),
+              label: Text(
+                _periodLabel(period),
+                style: const TextStyle(color: Colors.black),
+              ),
+              selectedColor: Colors.blue,
               selected: period == _selectedPeriod,
               onSelected: (_) async {
                 setState(() => _selectedPeriod = period);
@@ -168,7 +176,7 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
     );
   }
 
-  Widget _buildChart(ThemeData theme) {
+  Widget _buildChart() {
     if (_periodTotals.isEmpty) {
       return const SizedBox(height: 220);
     }
@@ -190,7 +198,7 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
                 BarChartRodData(
                   toY: minutes,
                   borderRadius: BorderRadius.circular(6),
-                  color: theme.primaryColor,
+                  color: Colors.blue,
                 ),
               ],
             );
@@ -201,7 +209,10 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
                 showTitles: true,
                 interval: interval,
                 reservedSize: 40,
-                getTitlesWidget: (value, meta) => Text(value.toInt().toString()),
+                getTitlesWidget: (value, meta) => Text(
+                  value.toInt().toString(),
+                  style: const TextStyle(color: Colors.black),
+                ),
               ),
             ),
             rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -214,43 +225,64 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
     );
   }
 
-  Widget _buildStats(ThemeData theme) {
+  Widget _buildStats() {
     final color = _getComparisonColor(_totalSeconds, _previousPeriodSeconds);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Estadísticas", style: theme.textTheme.titleLarge),
+        const Text(
+          "Estadísticas",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
         const SizedBox(height: 16),
-        Text("🔥 Racha actual: $_streak días"),
+        Text("Racha actual: $_streak días", style: const TextStyle(color: Colors.black)),
         const SizedBox(height: 8),
-        Text("⏱ Tiempo total: ${(_totalSeconds / 60).round()} min",
-            style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+        Text(
+          "Tiempo total: ${(_totalSeconds / 60).round()} min",
+          style: TextStyle(color: color, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         LinearProgressIndicator(
           value: (_totalSeconds / 60) / widget.activity.objetiveMinutes,
-          color: theme.primaryColor,
-          backgroundColor: theme.primaryColor.withOpacity(0.2),
+          color: Colors.blue,
+          backgroundColor: Colors.blue.withOpacity(0.2),
         ),
         const SizedBox(height: 8),
-        Text("✅ Completado hoy: ${_completedToday ? 'Sí' : 'No'}"),
+        Text(
+          "Completado hoy: ${_completedToday ? 'Sí' : 'No'}",
+          style: const TextStyle(color: Colors.black),
+        ),
       ],
     );
   }
 
-  Widget _buildAdvancedStats(ThemeData theme) {
+  Widget _buildAdvancedStats() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Detalles avanzados", style: theme.textTheme.titleLarge),
+        const Text(
+          "Detalles avanzados",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
         const SizedBox(height: 16),
-        Text("Sesiones totales: $_sessionsCount"),
+        Text("Sesiones totales: $_sessionsCount", style: const TextStyle(color: Colors.black)),
         const SizedBox(height: 4),
-        Text("Duración media sesión: ${_averageSessionDuration.round()} seg"),
+        Text("Duración media sesión: ${_averageSessionDuration.round()} seg",
+            style: const TextStyle(color: Colors.black)),
         const SizedBox(height: 4),
-        Text("Media sesiones/día: ${_averageSessionsPerDay.toStringAsFixed(2)}"),
+        Text("Media sesiones/día: ${_averageSessionsPerDay.toStringAsFixed(2)}",
+            style: const TextStyle(color: Colors.black)),
         const SizedBox(height: 12),
-        Text("Distribución semanal:"),
+        const Text("Distribución semanal:", style: TextStyle(color: Colors.black)),
         SizedBox(
           height: 100,
           child: Row(
@@ -263,10 +295,13 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
                   Container(
                     width: 20,
                     height: minutes,
-                    color: theme.primaryColor,
+                    color: Colors.blue,
                   ),
                   const SizedBox(height: 4),
-                  Text(["L","M","X","J","V","S","D"][i], style: const TextStyle(fontSize: 10)),
+                  Text(
+                    ["L","M","X","J","V","S","D"][i],
+                    style: const TextStyle(fontSize: 10, color: Colors.black),
+                  ),
                 ],
               );
             }),
