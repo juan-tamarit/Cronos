@@ -4,6 +4,7 @@ import 'activity_screen.dart';
 import '../db/activity_dao.dart';
 import '../services/stat_service.dart';
 import 'activities_list_screen.dart';
+import 'insight_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -54,12 +55,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (_) => const ActivitiesListScreen(),
-                ),
+                )
               );
               _loadTodayActivities();
             },
             icon: const Icon(Icons.list, color: Colors.black),
-          )
+          ),
+          IconButton(
+            onPressed: () async{
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_)=>const InsightScreen(),
+                )
+              );
+            _loadTodayActivities();
+            },
+            icon: const Icon(Icons.bar_chart, color: Colors.black))
         ],
       ),
       body: _loading

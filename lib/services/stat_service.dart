@@ -1,5 +1,6 @@
 import 'package:cronos/db/activity_dao.dart';
 import 'package:cronos/db/database_helper.dart';
+import '../models/period_type.dart';
 
 class StatService {
   final ActivityDao _activityDao = ActivityDao();
@@ -399,5 +400,103 @@ class StatService {
     final todayTotal = await getGlobalTodayTotal();
     final objectivesTotal = await _activityDao.getTotalDailyObjectivesSeconds();
     return objectivesTotal == 0 ? 0 : (todayTotal / objectivesTotal) * 100;
+  }
+  Future<List<int>> getGlobalLastNWeeksTotals(int n) async {
+    final db = await DatabaseHelper.instance.database;
+
+    final startOfThisWeek = _startOfCurrentWeek();
+    final startOfRange = startOfThisWeek.subtract(Duration(days: 7 * (n - 1)));
+    final endOfRange = startOfThisWeek.add(const Duration(days: 7));
+
+    const weekMillis = 7 * 86400000;
+
+    final result = await db.rawQuery('''
+      SELECT ((start - ?) / ?) as weekIndex,
+            SUM(durationSecs) as total
+      FROM sessions
+      WHERE start >= ? AND start < ?
+      GROUP BY weekIndex
+    ''', [
+      startOfThisWeek.millisecondsSinceEpoch,
+      weekMillis,
+      startOfRange.millisecondsSinceEpoch,
+      endOfRange.millisecondsSinceEpoch,
+    ]);
+
+    List<int> weeklyTotals = List.filled(n, 0);
+
+    for (final row in result) {
+      final weekIndex = (row['weekIndex'] as num).toInt();
+      final total = row['total'] as int? ?? 0;
+      final position = n - 1 + weekIndex;
+
+      if (position >= 0 && position < n) {
+        weeklyTotals[position] = total;
+      }
+    }
+
+    return weeklyTotals;
+  }
+  Future<List<int>> getGlobalLastNMonthsTotals(int n) async {
+    final db = await DatabaseHelper.instance.database;
+
+    final now = DateTime.now();
+    final startOfRange = DateTime(now.year, now.month - n + 1, 1);
+    final endOfRange = DateTime(now.year, now.month + 1, 1);
+
+    final result = await db.rawQuery('''
+      SELECT strftime('%Y-%m', start / 1000, 'unixepoch') as month,
+            SUM(durationSecs) as total
+      FROM sessions
+      WHERE start >= ? AND start < ?
+      GROUP BY month
+      ORDER BY month
+    ''', [
+      startOfRange.millisecondsSinceEpoch,
+      endOfRange.millisecondsSinceEpoch,
+    ]);
+
+    List<int> monthlyTotals = List.filled(n, 0);
+
+    for (final row in result) {
+      final parts = (row['month'] as String).split('-');
+      final year = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final total = row['total'] as int? ?? 0;
+
+      final position =
+          (year - startOfRange.year) * 12 + (month - startOfRange.month);
+
+      if (position >= 0 && position < n) {
+        monthlyTotals[position] = total;
+      }
+    }
+
+    return monthlyTotals;
+  }
+  Future<List<int>> getGlobalTotalsForPeriod(PeriodType period) async {
+    switch (period) {
+      case PeriodType.week:
+        // Solo semana actual
+        return await getGlobalLastNWeeksTotals(1);
+
+      case PeriodType.month:
+        // Solo mes actual
+        return await getGlobalLastNMonthsTotals(1);
+
+      case PeriodType.threeMonths:
+        return await getGlobalLastNMonthsTotals(3);
+
+      case PeriodType.sixMonths:
+        return await getGlobalLastNMonthsTotals(6);
+
+      case PeriodType.year:
+        return await getGlobalLastNMonthsTotals(12);
+    }
+  }
+  Future<int> getGlobalTotalForPeriod(PeriodType period) async {
+    final totals = await getGlobalTotalsForPeriod(period);
+    if (totals.isEmpty) return 0;
+    return totals.last;
   }
 }
