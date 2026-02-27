@@ -276,7 +276,7 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
         const SizedBox(height: 16),
         Text("Sesiones totales: $_sessionsCount", style: const TextStyle(color: Colors.black)),
         const SizedBox(height: 4),
-        Text("Duración media sesión: ${_averageSessionDuration.round()} seg",
+        Text("Duración media sesión: ${_averageSessionDuration.round()} min",
             style: const TextStyle(color: Colors.black)),
         const SizedBox(height: 4),
         Text("Media sesiones/día: ${_averageSessionsPerDay.toStringAsFixed(2)}",
