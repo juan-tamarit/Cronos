@@ -166,7 +166,7 @@ class _InsightScreenState extends State<InsightScreen> {
             );
           }),
           titlesData: FlTitlesData(
-            rightTitles: AxisTitles(
+            leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 interval: interval,
@@ -179,7 +179,7 @@ class _InsightScreenState extends State<InsightScreen> {
                 },
               ),
             ),
-            leftTitles: const AxisTitles(
+            rightTitles: const AxisTitles(
               sideTitles: SideTitles(showTitles: false),
             ),
             bottomTitles: const AxisTitles(

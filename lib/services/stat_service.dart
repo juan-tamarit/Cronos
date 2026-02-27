@@ -336,11 +336,16 @@ class StatService {
       SELECT SUM(durationSecs) as total, COUNT(*) as count
       FROM sessions
       WHERE activityId = ?
+      AND durationSecs > 0
     ''', [activityId]);
 
     final total = result.first['total'] as int? ?? 0;
     final count = result.first['count'] as int? ?? 0;
-    return count == 0 ? 0 : total / count;
+
+    if (count == 0) return 0;
+
+    final avgSeconds = total / count;
+    return avgSeconds / 60;
   }
 
   Future<int> getSessionsCount(int activityId) async {
@@ -350,6 +355,7 @@ class StatService {
       SELECT COUNT(*) as count
       FROM sessions
       WHERE activityId = ?
+      AND durationSecs > 0
     ''', [activityId]);
 
     return result.first['count'] as int? ?? 0;
@@ -362,14 +368,17 @@ class StatService {
       SELECT COUNT(*) as count, MIN(start) as first
       FROM sessions
       WHERE activityId = ?
+      AND durationSecs > 0
     ''', [activityId]);
 
     final count = result.first['count'] as int? ?? 0;
     final firstMillis = result.first['first'] as int?;
+
     if (count == 0 || firstMillis == null) return 0;
 
     final firstDay = DateTime.fromMillisecondsSinceEpoch(firstMillis);
     final today = DateTime.now();
+
     final daysDifference = today.difference(
       DateTime(firstDay.year, firstDay.month, firstDay.day)
     ).inDays + 1;
