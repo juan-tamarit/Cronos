@@ -29,6 +29,7 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
   double _averageSessionDuration = 0;
   double _averageSessionsPerDay = 0;
   Map<int, int> _timeByWeekDay = {};
+  double _weeklyProgress = 0.0;
 
   bool _isLoading = true;
 
@@ -54,7 +55,7 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
         prevSec = await _statService.getPreviousWeekTotal(activityId);
         break;
       case PeriodType.month:
-        totals = await _statService.getLastNMonthsTotals(activityId, 1);
+        totals = await _statService.getCurrentMonthWeeklyTotals(activityId);
         totalSec = await _statService.getCurrentMonthTotal(activityId);
         prevSec = await _statService.getPreviousMonthTotal(activityId);
         break;
@@ -77,6 +78,8 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
 
     final streak = await _statService.getCurrentStreak(activityId, objectiveMinutes);
     final todayStats = await _statService.getTodayStats(activityId, objectiveMinutes);
+    final currentWeekSeconds = await _statService.getCurrentWeekTotal(activityId);
+    final weeklyObjectiveSeconds = objectiveMinutes * 7 * 60;
 
     final sessionsCount = await _statService.getSessionsCount(activityId);
     final avgSessionDuration = await _statService.getAverageSessionDuration(activityId);
@@ -90,6 +93,9 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
       _streak = streak;
       _completedToday = todayStats['completed'] as bool;
       _progress = todayStats['progress'] as double;
+      _weeklyProgress = weeklyObjectiveSeconds == 0
+          ? 0.0
+          : (currentWeekSeconds / weeklyObjectiveSeconds).clamp(0.0, 1.0);
       _sessionsCount = sessionsCount;
       _averageSessionDuration = avgSessionDuration;
       _averageSessionsPerDay = avgSessionsPerDay;
@@ -117,6 +123,21 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
         return "6M";
       case PeriodType.year:
         return "Año";
+    }
+  }
+
+  List<String> _chartLabels() {
+    switch (_selectedPeriod) {
+      case PeriodType.week:
+        return const ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+      case PeriodType.month:
+        return const ['S1', 'S2', 'S3', 'S4'];
+      case PeriodType.threeMonths:
+        return const ['1', '2', '3'];
+      case PeriodType.sixMonths:
+        return const ['1', '2', '3', '4', '5', '6'];
+      case PeriodType.year:
+        return const ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
     }
   }
 
@@ -181,9 +202,10 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
       return const SizedBox(height: 220);
     }
 
+    final labels = _chartLabels();
     final maxMinutes = _periodTotals.map((e) => e / 60).reduce((a, b) => a > b ? a : b);
-    final maxY = (maxMinutes * 1.2).ceilToDouble();
-    final interval = (maxY / 5).ceilToDouble();
+    final maxY = maxMinutes <= 0 ? 10.0 : (maxMinutes * 1.2).ceilToDouble();
+    final interval = (maxY / 5).ceilToDouble().clamp(1, double.infinity).toDouble();
 
     return SizedBox(
       height: 220,
@@ -216,7 +238,27 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
               ),
             ),
             rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                interval: 1,
+                reservedSize: 28,
+                getTitlesWidget: (value, meta) {
+                  final index = value.toInt();
+                  if (index < 0 || index >= labels.length) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      labels[index],
+                      style: const TextStyle(color: Colors.black, fontSize: 12),
+                    ),
+                  );
+                },
+              ),
+            ),
           ),
           borderData: FlBorderData(show: false),
           gridData: const FlGridData(show: true),
@@ -248,7 +290,7 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
         ),
         const SizedBox(height: 8),
         LinearProgressIndicator(
-          value: (_totalSeconds / 60) / widget.activity.objetiveMinutes,
+          value: _weeklyProgress,
           color: Colors.blue,
           backgroundColor: Colors.blue.withOpacity(0.2),
         ),
@@ -262,6 +304,11 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
   }
 
   Widget _buildAdvancedStats() {
+    final weeklyMinutes =
+        List.generate(7, (i) => (_timeByWeekDay[i + 1] ?? 0) / 60);
+    final maxWeeklyMinutes = weeklyMinutes.reduce((a, b) => a > b ? a : b);
+    const maxBarHeight = 64.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -288,14 +335,32 @@ class _InsightActivityScreenState extends State<InsightActivityScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List.generate(7, (i) {
-              final minutes = (_timeByWeekDay[i + 1] ?? 0) / 60;
+              final minutes = weeklyMinutes[i];
+              final normalizedHeight = maxWeeklyMinutes <= 0
+                  ? 4.0
+                  : ((minutes / maxWeeklyMinutes) * maxBarHeight).clamp(
+                      4.0,
+                      maxBarHeight,
+                    );
               return Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Container(
                     width: 20,
-                    height: minutes,
-                    color: Colors.blue,
+                    height: maxBarHeight,
+                    alignment: Alignment.bottomCenter,
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Container(
+                      width: 20,
+                      height: normalizedHeight,
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(

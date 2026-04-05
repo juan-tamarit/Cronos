@@ -207,6 +207,38 @@ class StatService {
 
     return dailyTotals;
   }
+
+  Future<List<int>> getGlobalCurrentWeekDailyTotals() async {
+    final db = await DatabaseHelper.instance.database;
+
+    final startOfWeek = _startOfCurrentWeek();
+    final endOfWeek = startOfWeek.add(const Duration(days: 7));
+
+    final result = await db.rawQuery('''
+      SELECT ((start - ?) / 86400000) as dayIndex,
+             SUM(durationSecs) as total
+      FROM sessions
+      WHERE start >= ? AND start < ?
+      GROUP BY dayIndex
+    ''', [
+      startOfWeek.millisecondsSinceEpoch,
+      startOfWeek.millisecondsSinceEpoch,
+      endOfWeek.millisecondsSinceEpoch,
+    ]);
+
+    List<int> dailyTotals = List.filled(7, 0);
+
+    for (final row in result) {
+      final dayIndex = (row['dayIndex'] as num).toInt();
+      final total = row['total'] as int? ?? 0;
+
+      if (dayIndex >= 0 && dayIndex < 7) {
+        dailyTotals[dayIndex] = total;
+      }
+    }
+
+    return dailyTotals;
+  }
   // ─── Monthly metrics ─────────────────────────────────────────
   DateTime _startOfCurrentMonth() {
     final now = DateTime.now();
@@ -286,6 +318,75 @@ class StatService {
     }
 
     return monthlyTotals;
+  }
+
+  Future<List<int>> getCurrentMonthWeeklyTotals(int activityId) async {
+    final db = await DatabaseHelper.instance.database;
+    final startOfMonth = _startOfCurrentMonth();
+    final endOfMonth = _startOfNextMonth();
+
+    final result = await db.rawQuery('''
+      SELECT ((CAST(strftime('%d', start / 1000, 'unixepoch', 'localtime') AS INTEGER) - 1) / 7)
+          as weekIndex,
+             SUM(durationSecs) as total
+      FROM sessions
+      WHERE activityId = ? AND start >= ? AND start < ?
+      GROUP BY weekIndex
+      ORDER BY weekIndex
+    ''', [
+      activityId,
+      startOfMonth.millisecondsSinceEpoch,
+      endOfMonth.millisecondsSinceEpoch,
+    ]);
+
+    List<int> weeklyTotals = List.filled(4, 0);
+
+    for (final row in result) {
+      final weekIndex = (row['weekIndex'] as num).toInt();
+      final total = row['total'] as int? ?? 0;
+
+      if (weekIndex >= 0 && weekIndex < 4) {
+        weeklyTotals[weekIndex] = total;
+      } else if (weekIndex >= 4) {
+        weeklyTotals[3] += total;
+      }
+    }
+
+    return weeklyTotals;
+  }
+
+  Future<List<int>> getGlobalCurrentMonthWeeklyTotals() async {
+    final db = await DatabaseHelper.instance.database;
+    final startOfMonth = _startOfCurrentMonth();
+    final endOfMonth = _startOfNextMonth();
+
+    final result = await db.rawQuery('''
+      SELECT ((CAST(strftime('%d', start / 1000, 'unixepoch', 'localtime') AS INTEGER) - 1) / 7)
+          as weekIndex,
+             SUM(durationSecs) as total
+      FROM sessions
+      WHERE start >= ? AND start < ?
+      GROUP BY weekIndex
+      ORDER BY weekIndex
+    ''', [
+      startOfMonth.millisecondsSinceEpoch,
+      endOfMonth.millisecondsSinceEpoch,
+    ]);
+
+    List<int> weeklyTotals = List.filled(4, 0);
+
+    for (final row in result) {
+      final weekIndex = (row['weekIndex'] as num).toInt();
+      final total = row['total'] as int? ?? 0;
+
+      if (weekIndex >= 0 && weekIndex < 4) {
+        weeklyTotals[weekIndex] = total;
+      } else if (weekIndex >= 4) {
+        weeklyTotals[3] += total;
+      }
+    }
+
+    return weeklyTotals;
   }
 
   Future<int> getCurrentYearTotal(int activityId) async {
@@ -486,12 +587,10 @@ class StatService {
   Future<List<int>> getGlobalTotalsForPeriod(PeriodType period) async {
     switch (period) {
       case PeriodType.week:
-        // Solo semana actual
-        return await getGlobalLastNWeeksTotals(1);
+        return await getGlobalCurrentWeekDailyTotals();
 
       case PeriodType.month:
-        // Solo mes actual
-        return await getGlobalLastNMonthsTotals(1);
+        return await getGlobalCurrentMonthWeeklyTotals();
 
       case PeriodType.threeMonths:
         return await getGlobalLastNMonthsTotals(3);

@@ -84,6 +84,21 @@ class _InsightScreenState extends State<InsightScreen> {
     }
   }
 
+  List<String> _chartLabels() {
+    switch (_selectedPeriod) {
+      case PeriodType.week:
+        return const ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+      case PeriodType.month:
+        return const ['S1', 'S2', 'S3', 'S4'];
+      case PeriodType.threeMonths:
+        return const ['1', '2', '3'];
+      case PeriodType.sixMonths:
+        return const ['1', '2', '3', '4', '5', '6'];
+      case PeriodType.year:
+        return const ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -143,8 +158,9 @@ class _InsightScreenState extends State<InsightScreen> {
       return const SizedBox(height: 200);
     }
 
+    final labels = _chartLabels();
     final rawMax = _globalTotals.reduce((a, b) => a > b ? a : b) / 60;
-    final interval = (rawMax / 4).ceilToDouble();
+    final interval = rawMax <= 0 ? 1.0 : (rawMax / 4).ceilToDouble();
     final maxY = interval * 4;
 
     return SizedBox(
@@ -182,8 +198,26 @@ class _InsightScreenState extends State<InsightScreen> {
             rightTitles: const AxisTitles(
               sideTitles: SideTitles(showTitles: false),
             ),
-            bottomTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                interval: 1,
+                reservedSize: 28,
+                getTitlesWidget: (value, meta) {
+                  final index = value.toInt();
+                  if (index < 0 || index >= labels.length) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      labels[index],
+                      style: const TextStyle(color: Colors.black, fontSize: 12),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
           borderData: FlBorderData(show: false),
